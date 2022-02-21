@@ -238,17 +238,17 @@ func TestHandler_FormFileDump(t *testing.T) {
 		// Add an image file
 		if x, ok := r.(*os.File); ok {
 			if fw, err = w.CreateFormFile(key, x.Name()); err != nil {
-				t.Errorf("CreateFormFile: %w", err)
+				t.Errorf("CreateFormFile: %v", err)
 			}
 		} else {
 			// Add other fields
 			if fw, err = w.CreateFormField(key); err != nil {
-				t.Errorf("CreateFormField: %w", err)
+				t.Errorf("CreateFormField: %v", err)
 
 			}
 		}
 		if _, err = io.Copy(fw, r); err != nil {
-			t.Errorf("failed to copy: %w", err)
+			t.Errorf("failed to copy: %v", err)
 		}
 
 	}
