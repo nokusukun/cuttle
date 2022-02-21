@@ -15,6 +15,7 @@ import (
 )
 
 var cutleContextType = reflect.TypeOf((*Context)(nil)).Elem()
+
 type FinalResolver func(ctx Context) ([]reflect.Value, error)
 type ResolverFunc func(ctx Context) (interface{}, error)
 
@@ -108,14 +109,14 @@ func (r *Cuttle) handle(path string, userHandler interface{}) FinalResolver {
 	if handlerType.NumOut() != 1 || handlerType.Out(0).String() != "error" {
 		panic(fmt.Sprintf("userHandler '%v' should only return error", path))
 	}
-											// value to pass to function argument
-											//   |			validation passed
-											//   |           |     unhandled error
+	// value to pass to function argument
+	//   |			validation passed
+	//   |           |     unhandled error
 	var inputResolvers []func(ctx Context) (reflect.Value, bool, error)
 	for i := 0; i < handlerType.NumIn(); i++ {
 		var res func(ctx Context) (reflect.Value, bool, error)
 		inType := handlerType.In(i)
-		log.Debug("In Type String", inType.String())
+		log.Debug("In Type String ", inType.String())
 
 		type ValidationFail struct {
 			Field string `json:"field"`
@@ -139,53 +140,49 @@ func (r *Cuttle) handle(path string, userHandler interface{}) FinalResolver {
 					val := reflect.New(inType)
 					return val.Elem(), true, nil
 				}
+			default:
+				var resolvers = r.structResolvers(inType)
+
+				// This gets called during the request
+				res = func(context Context) (reflect.Value, bool, error) {
+					in := reflect.New(inType)
+					var failures []ValidationFail
+
+					for i, resolver := range resolvers {
+						if resolver == nil {
+							continue
+						}
+						value, err := resolver(context)
+						if err != nil {
+							failures = append(failures, ValidationFail{
+								Field: inType.Field(i).Name,
+								Err:   err.Error(),
+							})
+							log.Debug("Validation failed", failures[len(failures)-1])
+							continue
+						}
+						log.Debug("[DEBUG] Setting struct value", i, value)
+						in.Elem().Field(i).Set(reflect.ValueOf(value))
+					}
+
+					if len(failures) != 0 {
+						log.Debug("Validation failed for this request")
+						return reflect.Value{}, false, context.JSON(http.StatusBadRequest, map[string]interface{}{
+							"message": "validation failed",
+							"fields":  failures,
+						})
+					}
+
+					return in.Elem(), true, nil
+				}
 			}
 
 			inputResolvers = append(inputResolvers, res)
 			continue
 		}
 
-
-		if inType.Kind() == reflect.Struct {
-			var resolvers = r.structResolvers(inType)
-
-			// This gets called during the request
-			res = func(context Context) (reflect.Value, bool, error) {
-				in := reflect.New(inType)
-				var failures []ValidationFail
-
-				for i, resolver := range resolvers {
-					if resolver == nil {
-						continue
-					}
-					value, err := resolver(context)
-					if err != nil {
-						failures = append(failures, ValidationFail{
-							Field: inType.Field(i).Name,
-							Err:   err.Error(),
-						})
-						log.Debug("Validation failed", failures[len(failures) - 1])
-						continue
-					}
-					log.Debug("[DEBUG] Setting struct value", i, value)
-					in.Elem().Field(i).Set(reflect.ValueOf(value))
-				}
-
-				if len(failures) != 0 {
-					log.Debug("Validation failed for this request")
-					return reflect.Value{}, false, context.JSON(http.StatusBadRequest, map[string]interface{}{
-						"message": "validation failed",
-						"fields": failures,
-					})
-				}
-
-				return in.Elem(), true, nil
-			}
-
-		}
-
 		// pass the usual echo context if it's just that
-		if inType.Implements(cutleContextType){
+		if inType.Implements(cutleContextType) {
 			// This gets called during the request
 			res = func(context Context) (reflect.Value, bool, error) {
 				return reflect.ValueOf(context), true, nil
@@ -227,7 +224,7 @@ func (r *Cuttle) structResolvers(inT reflect.Type) []ResolverFunc {
 
 		var ctxResolvers ContextResolvers
 		lookup, ok := structTag.Lookup("bind") // checks for > Field Type `bind:"query,param"`
-		if ok {										//						    ^^^^^^^^^^^^^^^^^
+		if ok {                                //						    ^^^^^^^^^^^^^^^^^
 			ctxResolvers = GetResolvers(strings.Split(lookup, ",")...)
 		} else {
 			// default resolves if theres no specified bind
@@ -362,4 +359,3 @@ func (r *Cuttle) getTags(structTag reflect.StructTag, tag string) (CSRGetOption,
 	}
 	return getOption, tag
 }
-

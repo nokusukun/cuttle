@@ -5,15 +5,18 @@
 
 ---
 Cuttle is a heavily opinionated HTTP router in Go.
+
 Its built on top of Echo so almost everything that's not new is most likely from echo.
 
+
+Note: **Requires Go 1.17**
 ## Usage
 `http://localhost/test?q=hello+world&count=10`
 ```go
 r := cuttle.New()
 type testParam struct {
     ID    uint    `bind:"param"`
-    Query string  `bind:"query" as:"q"`
+    Query string  `bind:"query" as:"q,required"`
     Count float64 `bind:"query"`
     Token string `bind:"header" as:"X-Security-Token,sensitive"`
 }

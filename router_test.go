@@ -42,7 +42,7 @@ func TestRouter_GETOnlyEcho(t *testing.T) {
 func TestRouter_GET(t *testing.T) {
 	r := New()
 	r.GET("/test", func(a struct {
-		Query string `bind:"query,json" json:"query,omitempty"`
+		Query string `bind:"query,json" as:"q,required"`
 		Count int
 		Ctx   Context
 		_     string `return:"200"`
@@ -52,7 +52,7 @@ func TestRouter_GET(t *testing.T) {
 		return a.Ctx.JSON(200, "wow")
 	})
 
-	request, err := http.NewRequest("GET", "http://localhost/test?Query=hello+world&Count=69", nil)
+	request, err := http.NewRequest("GET", "http://localhost/test?q=hello+world&Count=69", nil)
 	if err != nil {
 		t.Errorf("failed to make request: %v", err)
 	}
@@ -89,7 +89,6 @@ func TestRouter_GETValidationFailed(t *testing.T) {
 	fmt.Printf("[%v] %v\n", w.Code, w.Body.String())
 }
 
-
 func TestRouter_TagAs(t *testing.T) {
 	r := New()
 	r.GET("/test/:id", func(params struct {
@@ -118,7 +117,6 @@ func TestRouter_TagAs(t *testing.T) {
 	assert.Equal(t, w.Code, 200)
 	fmt.Printf("[%v] %v\n", w.Code, w.Body.String())
 }
-
 
 func TestHandler_DumpJson(t *testing.T) {
 	r := New()
@@ -227,7 +225,7 @@ func TestHandler_FormFileDump(t *testing.T) {
 	// Prepare a form that you will submit to that URL.
 	values := map[string]io.Reader{
 		"avatar": file,
-		"id": bytes.NewBufferString(id),
+		"id":     bytes.NewBufferString(id),
 	}
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
