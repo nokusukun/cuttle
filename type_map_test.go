@@ -1,4 +1,4 @@
-package locust
+package cuttle
 
 import (
 	"encoding/json"
@@ -24,7 +24,6 @@ type Topping struct {
 	ID   string `json:"id"`
 	Type string `json:"type"`
 }
-
 
 func TestGenerateTypeMap(t *testing.T) {
 	s := Sample{}

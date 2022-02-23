@@ -1,4 +1,4 @@
-package locust
+package cuttle
 
 import (
 	"reflect"
@@ -7,8 +7,7 @@ import (
 
 type GenerateTypeMapOptions struct {
 	IncludeUnexported bool
-	LookupTags []string
-
+	LookupTags        []string
 }
 
 // GenerateTypeMap generates a map[string]interface where it lays out the name:type of the struct fields
@@ -37,4 +36,3 @@ func GenerateTypeMap(typeVal reflect.Type) map[string]interface{} {
 	}
 	return typeMap
 }
-

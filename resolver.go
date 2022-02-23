@@ -1,4 +1,4 @@
-package locust
+package cuttle
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-type FromJson struct {}
-type AsReturn struct {}
+type FromJson struct{}
+type AsReturn struct{}
 
 func GetNameTag(a interface{}, index int) (string, reflect.StructTag) {
 	val := reflect.Indirect(reflect.ValueOf(a))
@@ -16,10 +16,12 @@ func GetNameTag(a interface{}, index int) (string, reflect.StructTag) {
 
 type ContextResolvers []ContextResolverFunc
 type ContextResolverFunc func(string, Context) string
-const ResolveAsFile = "locust.resolveasfile"
+
+const ResolveAsFile = "cuttle.resolveasfile"
+
 type CSRGetOption struct {
 	Sensitive bool
-	Required bool
+	Required  bool
 }
 
 var ErrNoValueOnRequiredField = fmt.Errorf("no value found on required field")
@@ -50,7 +52,7 @@ var ctxResolvers = map[string]ContextResolverFunc{
 		x := ctx.Param(name)
 		return x
 	},
-	"header": func (name string, ctx Context) string {
+	"header": func(name string, ctx Context) string {
 		x := ctx.Request().Header.Get(name)
 		return x
 	},

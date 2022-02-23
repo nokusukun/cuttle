@@ -1,4 +1,4 @@
-package locust
+package cuttle
 
 import (
 	"fmt"
