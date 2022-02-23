@@ -18,6 +18,8 @@ var cutleContextType = reflect.TypeOf((*Context)(nil)).Elem()
 
 type FinalResolver func(ctx Context) ([]reflect.Value, error)
 type ResolverFunc func(ctx Context) (interface{}, error)
+type MiddlewareFunc = echo.MiddlewareFunc
+type ErrorHandlerFunc = func(err error, ctx Context)
 
 type Context interface {
 	echo.Context
@@ -25,6 +27,7 @@ type Context interface {
 
 type Cuttle struct {
 	*echo.Echo
+	ErrorHandler ErrorHandlerFunc
 }
 
 func New() *Cuttle {
@@ -33,14 +36,11 @@ func New() *Cuttle {
 	e.Logger.Info("[Cuttle 3:>] is based off Echo")
 	return &Cuttle{
 		e,
+		nil,
 	}
 }
 
-func newRouter() *Cuttle {
-	return &Cuttle{}
-}
-
-func (r *Cuttle) Method(method, path string, userHandler interface{}) {
+func (r *Cuttle) Method(method, path string, userHandler interface{}, middleware ...MiddlewareFunc) {
 	finalResolver := r.handle(path, userHandler)
 
 	r.Echo.Add(method, path, func(context echo.Context) error {
@@ -58,44 +58,48 @@ func (r *Cuttle) Method(method, path string, userHandler interface{}) {
 		if retVal[0].IsNil() {
 			return nil
 		}
+		if r.ErrorHandler != nil {
+			r.ErrorHandler(retVal[0].Interface().(error), context)
+			return nil
+		}
 		return retVal[0].Interface().(error)
-	})
+	}, middleware...)
 }
 
-func (r *Cuttle) GET(path string, userHandler interface{}) {
-	r.Method("GET", path, userHandler)
+func (r *Cuttle) GET(path string, userHandler interface{}, middleware ...MiddlewareFunc) {
+	r.Method("GET", path, userHandler, middleware...)
 }
 
-func (r *Cuttle) POST(path string, userHandler interface{}) {
-	r.Method(http.MethodPost, path, userHandler)
+func (r *Cuttle) POST(path string, userHandler interface{}, middleware ...MiddlewareFunc) {
+	r.Method(http.MethodPost, path, userHandler, middleware...)
 }
 
-func (r *Cuttle) DELETE(path string, userHandler interface{}) {
-	r.Method(http.MethodDelete, path, userHandler)
+func (r *Cuttle) DELETE(path string, userHandler interface{}, middleware ...MiddlewareFunc) {
+	r.Method(http.MethodDelete, path, userHandler, middleware...)
 }
 
-func (r *Cuttle) HEAD(path string, userHandler interface{}) {
-	r.Method(http.MethodHead, path, userHandler)
+func (r *Cuttle) HEAD(path string, userHandler interface{}, middleware ...MiddlewareFunc) {
+	r.Method(http.MethodHead, path, userHandler, middleware...)
 }
 
-func (r *Cuttle) PUT(path string, userHandler interface{}) {
-	r.Method(http.MethodPut, path, userHandler)
+func (r *Cuttle) PUT(path string, userHandler interface{}, middleware ...MiddlewareFunc) {
+	r.Method(http.MethodPut, path, userHandler, middleware...)
 }
 
-func (r *Cuttle) OPTIONS(path string, userHandler interface{}) {
-	r.Method(http.MethodOptions, path, userHandler)
+func (r *Cuttle) OPTIONS(path string, userHandler interface{}, middleware ...MiddlewareFunc) {
+	r.Method(http.MethodOptions, path, userHandler, middleware...)
 }
 
-func (r *Cuttle) CONNECT(path string, userHandler interface{}) {
-	r.Method(http.MethodConnect, path, userHandler)
+func (r *Cuttle) CONNECT(path string, userHandler interface{}, middleware ...MiddlewareFunc) {
+	r.Method(http.MethodConnect, path, userHandler, middleware...)
 }
 
-func (r *Cuttle) PATCH(path string, userHandler interface{}) {
-	r.Method(http.MethodPatch, path, userHandler)
+func (r *Cuttle) PATCH(path string, userHandler interface{}, middleware ...MiddlewareFunc) {
+	r.Method(http.MethodPatch, path, userHandler, middleware...)
 }
 
-func (r *Cuttle) TRACE(path string, userHandler interface{}) {
-	r.Method(http.MethodTrace, path, userHandler)
+func (r *Cuttle) TRACE(path string, userHandler interface{}, middleware ...MiddlewareFunc) {
+	r.Method(http.MethodTrace, path, userHandler, middleware...)
 }
 
 // handle returns a finalresolver function that returns the arguments passed to the userHandler as an array of reflect.Value
