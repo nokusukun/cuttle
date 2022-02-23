@@ -28,8 +28,11 @@ type Cuttle struct {
 }
 
 func New() *Cuttle {
+	e := echo.New()
+	e.HideBanner = true
+	e.Logger.Info("[Cuttle 3:>] is based off Echo")
 	return &Cuttle{
-		echo.New(),
+		e,
 	}
 }
 
