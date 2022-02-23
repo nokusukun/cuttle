@@ -1,4 +1,4 @@
-module cuttle
+module github.com/nokusukun/cuttle
 
 go 1.17
 
