@@ -102,6 +102,11 @@ func (r *Cuttle) TRACE(path string, userHandler interface{}, middleware ...Middl
 	r.Method(http.MethodTrace, path, userHandler, middleware...)
 }
 
+type ValidationFail struct {
+	Field string `json:"field"`
+	Err   string `json:"error"`
+}
+
 // handle returns a finalresolver function that returns the arguments passed to the userHandler as an array of reflect.Value
 func (r *Cuttle) handle(path string, userHandler interface{}) FinalResolver {
 	// validate userHandler
@@ -124,11 +129,6 @@ func (r *Cuttle) handle(path string, userHandler interface{}) FinalResolver {
 		var res func(ctx Context) (reflect.Value, bool, error)
 		inType := handlerType.In(i)
 		log.Debug("In Type String ", inType.String())
-
-		type ValidationFail struct {
-			Field string `json:"field"`
-			Err   string `json:"error"`
-		}
 
 		if inType.Kind() == reflect.Struct && inType.NumField() > 0 {
 			firstField := inType.Field(0)
@@ -304,6 +304,39 @@ func (r *Cuttle) structResolvers(inT reflect.Type) []ResolverFunc {
 				}
 				ret := reflect.New(field.Type)
 				ret.Elem().SetUint(val)
+				return ret.Elem().Interface(), nil
+			}
+		case reflect.Struct:
+			resolvers := r.structResolvers(field.Type)
+			structResolver = func(ctx Context) (interface{}, error) {
+				ret := reflect.New(field.Type)
+				var failures []ValidationFail
+
+				for i, resolver := range resolvers {
+					if resolver == nil {
+						continue
+					}
+					value, err := resolver(ctx)
+					if err != nil {
+						failures = append(failures, ValidationFail{
+							Field: field.Type.Field(i).Name,
+							Err:   err.Error(),
+						})
+						log.Debug("Validation failed", failures[len(failures)-1])
+						continue
+					}
+					log.Debug("[DEBUG] Setting struct value", i, value)
+					ret.Elem().Field(i).Set(reflect.ValueOf(value))
+				}
+
+				if len(failures) != 0 {
+					log.Debug("Validation failed for this request")
+					return nil, ctx.JSON(http.StatusBadRequest, map[string]interface{}{
+						"message": "validation failed",
+						"fields":  failures,
+					})
+				}
+
 				return ret.Elem().Interface(), nil
 			}
 		case reflect.Interface:

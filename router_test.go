@@ -65,6 +65,37 @@ func TestRouter_GET(t *testing.T) {
 	fmt.Printf("[%v] %v\n", w.Code, w.Body.String())
 }
 
+func TestRouter_GETNested(t *testing.T) {
+	r := New()
+
+	type Nested struct {
+		Query string `bind:"query,json" as:"q,required"`
+	}
+	r.GET("/test", func(a struct {
+		Nested
+		Count int
+		Ctx   Context
+		_     string `return:"200"`
+		_     error  `return:"400"`
+	}) error {
+		assert.Equal(t, a.Query, "hello")
+		fmt.Println("Searching for...", a.Query)
+		return a.Ctx.JSON(200, "wow")
+	})
+
+	request, err := http.NewRequest("GET", "http://localhost/test?q=hello&Count=69", nil)
+	if err != nil {
+		t.Errorf("failed to make request: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, request)
+	if w.Code != 200 {
+		t.Fatal("got non 200 code", w.Code)
+	}
+	fmt.Printf("[%v] %v\n", w.Code, w.Body.String())
+}
+
 func TestRouter_GETValidationFailed(t *testing.T) {
 	r := New()
 	r.GET("/test", func(a struct {
